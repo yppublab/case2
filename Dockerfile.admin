@@ -1,0 +1,25 @@
+FROM ubuntu:22.04
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y openssh-server sudo vim nano net-tools && \
+    useradd -m admin && mkdir -p /var/run/sshd
+
+COPY ./secrets/admin_id_rsa.pub /tmp/admin_id_rsa.pub
+
+RUN mkdir -p /home/admin/.ssh && \
+    chmod u+s /usr/bin/base64 && \
+    if [ -f /tmp/admin_id_rsa.pub ]; then \
+      cat /tmp/admin_id_rsa.pub > /home/admin/.ssh/authorized_keys ; \
+    else \
+      echo "# no admin public key supplied" > /home/admin/.ssh/authorized_keys ; \
+    fi && \
+    chown -R admin:admin /home/admin/.ssh && chmod 700 /home/admin/.ssh && chmod 600 /home/admin/.ssh/authorized_keys && \
+    rm -f /tmp/admin_id_rsa.pub
+
+RUN mkdir -p /guides && \
+    install -m 600 -o root -g root -D /dev/null /guides/smb_note.txt && \
+    echo "smb://fileserver.internal/HR_share. Note: Someday I should close smb guest access, but not now.." > /guides/smb_note.txt && \
+    chmod 600 /guides/smb_note.txt && chown root:root /guides/smb_note.txt
+
+EXPOSE 22
+CMD ["/usr/sbin/sshd","-D"]
+

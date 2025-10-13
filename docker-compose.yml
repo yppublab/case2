@@ -1,0 +1,79 @@
+version: '3.8'
+
+networks:
+  ext_net:
+    driver: bridge
+  lab_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.31.0.0/24
+
+volumes:
+  web_data:
+
+services:
+  web:
+    image: langflowai/langflow:1.2.0
+    container_name: lab_web
+    networks: [ ext_net ]
+    ports:
+      - "127.0.0.1:7860:7860"
+    restart: unless-stopped
+    volumes:
+      - ./secrets/wg.conf:/opt/webdata/wg.conf:ro
+      - ./secrets/nothing.txt:/opt/webdata/nothing.txt:ro
+      - web_data:/opt/webdata
+
+  wg-server:
+    image: lscr.io/linuxserver/wireguard:latest
+    container_name: lab_wg_server
+    privileged: true
+    cap_add: [ "NET_ADMIN", "SYS_MODULE" ]
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+    volumes:
+      - ./wg-server/config:/config
+    ports:
+      - "127.0.0.1:51820:51820/udp"
+    # ВАЖНО: сначала внутренняя сеть (eth0 внутри контейнера), потом внешняя
+    networks:
+      lab_net: {}
+      ext_net: {}
+    restart: unless-stopped
+
+  user_pc:
+    build:
+      context: .
+      dockerfile: Dockerfile.user
+    container_name: lab_pc
+    hostname: user_pc
+    networks: 
+      lab_net:
+       ipv4_address: 172.31.0.3
+    tty: true
+
+  admin_pc:
+    build:
+      context: .
+      dockerfile: Dockerfile.admin
+    container_name: lab_admin
+    hostname: admin_pc
+    networks: 
+      lab_net:
+       ipv4_address: 172.31.0.3
+    tty: true
+
+  fileserver:
+    build:
+      context: .
+      dockerfile: Dockerfile.fileserver
+    container_name: lab_fileserver
+    hostname: fileserver
+    networks: 
+      lab_net:
+       ipv4_address: 172.31.0.5
+    tty: true
+
