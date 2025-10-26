@@ -1,11 +1,8 @@
-# Стейдж c busybox (даёт статический /bin/busybox, в нём есть nc)
 FROM alpine:3.19 AS bb
 RUN apk add --no-cache busybox-static
 
-# Уязвимый веб: Langflow 1.2.x (уязвим до 1.3.0 — CVE-2025-3248)
 FROM langflowai/langflow:1.2.0
 
-# Добавим nc (через busybox) и подготовим каталог с артефактами
 COPY --from=bb /bin/busybox /usr/local/bin/busybox
 RUN ln -sf /usr/local/bin/busybox /usr/local/bin/nc && \
     mkdir -p /opt/webdata
